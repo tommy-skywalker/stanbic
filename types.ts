@@ -8,16 +8,22 @@ export interface Transaction {
   amount: number;
   date: string;
   bank?: string;
+  category?: 'transfer' | 'investment' | 'payout' | 'system';
 }
+
+export type InvestmentStatus = 'active' | 'matured';
 
 export interface ActiveInvestment {
   id: string;
-  amount: number;
-  maturityDate: string;
-  interestRate: number;
-  startDate: string;
   name: string;
+  // Full value paid out at maturity (interest already included).
+  amount: number;
+  interestRate: number;   // monthly %
   durationMonths: number;
+  startDate: string;      // ISO yyyy-mm-dd
+  maturityDate: string;   // ISO yyyy-mm-dd
+  status: InvestmentStatus;
+  payoutDate?: string;    // ISO yyyy-mm-dd — the date it was credited
 }
 
 export interface UserProfile {
@@ -34,5 +40,5 @@ export enum AppScreen {
   PROFILE = 'PROFILE',
   TRANSFER = 'TRANSFER',
   ACTIVITY = 'ACTIVITY',
-  INVESTMENT = 'INVESTMENT'
+  INVESTMENT = 'INVESTMENT',
 }

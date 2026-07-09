@@ -1,168 +1,172 @@
 import React, { useState } from 'react';
 import { UserProfile, Transaction } from '../types';
+import { formatNaira, formatAmount } from '../utils';
 
 interface TransferProps {
   user: UserProfile;
   transactions: Transaction[];
   onBack: () => void;
-  onTransferComplete: (amount: number) => void;
+  onTransferComplete: (amount: number, recipient: string) => void;
 }
 
-const Transfer: React.FC<TransferProps> = ({ user, transactions, onBack, onTransferComplete }) => {
-  const [step, setStep] = useState<'options' | 'input'>('options');
+const BENEFICIARIES = [
+  { name: 'Aisha Bello', bank: 'GTBank', account: '0123456789' },
+  { name: 'Emeka Obi', bank: 'Access Bank', account: '0987654321' },
+  { name: 'Tunde Adeyemi', bank: 'Stanbic IBTC', account: '0044556677' },
+];
+
+const Transfer: React.FC<TransferProps> = ({ user, onBack, onTransferComplete }) => {
+  const [step, setStep] = useState<'select' | 'amount'>('select');
+  const [recipient, setRecipient] = useState<{ name: string; bank: string; account: string } | null>(null);
   const [amount, setAmount] = useState('');
+  const [error, setError] = useState('');
+  const [processing, setProcessing] = useState(false);
 
-  const handleTransfer = () => {
-    const amt = parseFloat(amount);
-    if (isNaN(amt) || amt <= 0 || amt > user.balance) {
-      alert("Invalid amount or insufficient balance");
-      return;
-    }
-    onTransferComplete(amt);
-  };
+  const amt = parseFloat(amount);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 2,
-    }).format(value);
+  const submit = () => {
+    if (isNaN(amt) || amt <= 0) return setError('Enter a valid amount');
+    if (amt > user.balance) return setError('Insufficient balance');
+    setError('');
+    setProcessing(true);
+    setTimeout(() => onTransferComplete(amt, `Transfer to ${recipient?.name}`), 1400);
   };
 
   return (
-    <div className="bg-[#0033a0] min-h-screen flex flex-col font-sans text-white relative overflow-hidden">
-      {/* Background glowing effects */}
-      <div className="absolute -top-24 -left-24 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl"></div>
-      <div className="absolute top-1/2 -right-32 w-80 h-80 bg-blue-600/15 rounded-full blur-3xl"></div>
-
-      {/* Top Section matching rightmost screen of Inspiration */}
-      <div className="p-6 pt-8 relative z-10">
-        <div className="flex justify-between items-center mb-6">
-          <button onClick={onBack} className="p-2 -ml-2 text-white/90 hover:text-white hover:bg-white/10 rounded-full transition-all active:scale-95">
-            <svg className="w-6 h-6 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    <div className="bg-slate-50 min-h-full">
+      <div className="bg-gradient-to-b from-[#00246e] to-[#0033a0] text-white px-6 pt-10 pb-8 rounded-b-[2rem]">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => (step === 'amount' ? setStep('select') : onBack())}
+            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <div className="bg-white/15 p-2.5 rounded-full backdrop-blur-md">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
-          </div>
+          <span className="text-sm font-bold uppercase tracking-widest">Send Money</span>
+          <div className="w-10" />
         </div>
 
-        <h2 className="text-xl font-black tracking-wide">Funds Transfer</h2>
-        <p className="text-xs text-white/60 mt-1">How would you like to transfer Money?</p>
-
-        {/* Big Buttons inside Top Blue Block */}
-        <div className="space-y-3 mt-6">
-          <TransferOption title="Send to Beneficiary" onClick={() => setStep('input')} />
-          <TransferOption title="Send to Account Number" onClick={() => setStep('input')} />
+        <div className="mt-6">
+          <p className="text-[11px] font-medium uppercase tracking-widest text-blue-200/70">Available Balance</p>
+          <div className="flex items-baseline gap-1.5 mt-1">
+            <span className="text-sm font-semibold text-blue-200/80">NGN</span>
+            <span className="text-3xl font-bold tracking-tight tabular-nums">{formatAmount(user.balance)}</span>
+          </div>
         </div>
       </div>
 
-      {/* Overlapping White Body with rounded top corner card occupying rest of screen */}
-      <div className="flex-1 bg-white text-gray-800 rounded-t-[2.5rem] mt-4 p-6 shadow-inner-2xl relative z-10 flex flex-col">
-        {step === 'options' ? (
-          <div className="flex-1 flex flex-col">
-            {/* Header / Pills of recent transfers */}
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-400">Recent Transfers</span>
-              <span className="text-xs font-bold text-[#0033a0] cursor-pointer hover:underline">See All</span>
-            </div>
-            
-            {/* List of Recent Transfers */}
-            <div className="space-y-3.5 flex-1 overflow-y-auto max-h-[320px] pr-1 custom-scrollbar">
-              {transactions.slice(0, 5).map(tx => (
-                <div key={tx.id} className="flex items-center justify-between p-2.5 hover:bg-gray-50 rounded-2xl transition-all cursor-pointer border border-transparent hover:border-gray-100">
+      <div className="px-6 pt-6 pb-10">
+        {step === 'select' ? (
+          <div>
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+              Select Beneficiary
+            </h3>
+            <div className="space-y-2.5">
+              {BENEFICIARIES.map((b) => (
+                <button
+                  key={b.account}
+                  onClick={() => {
+                    setRecipient(b);
+                    setStep('amount');
+                  }}
+                  className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:border-blue-200 transition-colors group"
+                >
                   <div className="flex items-center gap-3.5">
-                    {/* Circle icon with user avatar representation */}
-                    <div className="w-10.5 h-10.5 rounded-full bg-blue-50 text-[#0033a0] flex items-center justify-center font-black text-xs relative overflow-hidden">
-                      {tx.name.charAt(0).toUpperCase()}
-                      <div className="absolute inset-0 bg-blue-600/5"></div>
+                    <div className="w-11 h-11 rounded-full bg-blue-50 text-[#0033a0] flex items-center justify-center font-bold text-sm">
+                      {b.name.split(' ').map((n) => n[0]).join('')}
                     </div>
-                    <div>
-                      <h4 className="text-xs font-black text-gray-800 tracking-wide">{tx.name}</h4>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
-                        {tx.bank ? `${tx.bank} • ` : 'Stanbic • '}{tx.date.split(' . ')[0]}
+                    <div className="text-left">
+                      <h4 className="text-sm font-bold text-slate-800">{b.name}</h4>
+                      <p className="text-[11px] text-slate-400 font-medium">
+                        {b.bank} · {b.account}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-right">
-                    <span className={`text-xs font-black ${tx.type === 'debit' ? 'text-gray-800' : 'text-emerald-600'}`}>
-                      {tx.type === 'debit' ? '-' : '+'}{formatCurrency(tx.amount).replace('NGN', '').trim()}
-                    </span>
-                    <div className="w-5 h-5 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center border border-emerald-200">
-                      <svg className="w-3.5 h-3.5 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
+                  <svg className="w-4 h-4 text-slate-300 group-hover:text-[#0033a0] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
               ))}
             </div>
+
+            <button className="w-full mt-4 border border-dashed border-slate-300 text-slate-500 font-bold py-4 rounded-2xl text-sm hover:border-[#0033a0] hover:text-[#0033a0] transition-colors flex items-center justify-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              New Recipient
+            </button>
           </div>
         ) : (
-          <div className="animate-slide-up flex-1 flex flex-col justify-between">
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider">Enter Amount</h3>
-                <button 
-                  onClick={() => setStep('options')} 
-                  className="text-xs font-bold text-gray-400 hover:text-gray-600"
+          <div className="animate-slide-up">
+            {recipient && (
+              <div className="flex items-center gap-3.5 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm mb-6">
+                <div className="w-11 h-11 rounded-full bg-blue-50 text-[#0033a0] flex items-center justify-center font-bold text-sm">
+                  {recipient.name.split(' ').map((n) => n[0]).join('')}
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800">{recipient.name}</h4>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    {recipient.bank} · {recipient.account}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+              Amount
+            </label>
+            <div className="relative mb-2">
+              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl font-bold text-slate-400">₦</span>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setError('');
+                }}
+                placeholder="0.00"
+                autoFocus
+                className="w-full bg-white border border-slate-200 focus:border-[#0033a0] focus:ring-2 focus:ring-blue-100 rounded-2xl py-5 pl-12 pr-4 text-2xl font-bold outline-none transition-all text-slate-900 tabular-nums"
+              />
+            </div>
+            {error && <p className="text-[11px] font-semibold text-rose-500 mb-2">{error}</p>}
+
+            <div className="flex flex-wrap gap-2 mb-8">
+              {[50000, 100000, 500000, 1000000].map((q) => (
+                <button
+                  key={q}
+                  onClick={() => setAmount(String(q))}
+                  className="px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:border-[#0033a0] hover:text-[#0033a0] transition-colors tabular-nums"
                 >
-                  Back
+                  ₦{formatAmount(q, false)}
                 </button>
-              </div>
-
-              {/* Amount input block */}
-              <div className="relative mb-6">
-                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl font-black text-gray-400">₦</span>
-                <input 
-                  type="number" 
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full bg-gray-50 border-2 border-transparent focus:border-[#0033a0] rounded-2xl py-5 pl-12 pr-4 text-2xl font-black outline-none transition-all text-gray-800"
-                />
-              </div>
-
-              {/* Balance card */}
-              <div className="bg-blue-50/50 border border-blue-50/80 rounded-2xl p-4.5 mb-8 flex justify-between items-center">
-                <span className="text-xs font-bold text-gray-500">Available Balance:</span>
-                <span className="text-sm font-black text-[#0033a0]">{formatCurrency(user.balance)}</span>
-              </div>
+              ))}
             </div>
 
-            <div className="space-y-3">
-              <button 
-                onClick={handleTransfer}
-                className="w-full bg-[#0033a0] hover:bg-[#002880] text-white font-black py-4.5 rounded-2xl shadow-xl transition-all active:scale-[0.98]"
-              >
-                Continue
-              </button>
-              <button 
-                onClick={() => setStep('options')}
-                className="w-full text-gray-400 font-extrabold py-2 text-xs uppercase tracking-widest hover:text-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
+            <button
+              onClick={submit}
+              disabled={processing}
+              className="w-full bg-[#0033a0] hover:bg-[#002880] text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-900/10 transition-all active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-70"
+            >
+              {processing ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Sending
+                </>
+              ) : (
+                `Send ${amt > 0 && !isNaN(amt) ? formatNaira(amt, false) : 'Money'}`
+              )}
+            </button>
           </div>
         )}
       </div>
     </div>
   );
 };
-
-const TransferOption: React.FC<{ title: string; onClick: () => void }> = ({ title, onClick }) => (
-  <button onClick={onClick} className="w-full flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl transition-all group active:scale-[0.99]">
-    <span className="text-sm font-bold tracking-wide">{title}</span>
-    <div className="w-7 h-7 bg-white/10 text-white rounded-full flex items-center justify-center group-hover:bg-white group-hover:text-[#0033a0] transition-all">
-      <svg className="w-4 h-4 stroke-[2.5] group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-      </svg>
-    </div>
-  </button>
-);
 
 export default Transfer;

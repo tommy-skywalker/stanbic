@@ -1,268 +1,250 @@
-
 import React, { useState, useEffect } from 'react';
 import { AppScreen, UserProfile, Transaction, ActiveInvestment } from './types';
+import { maturityValue, nowLedgerStamp, ledgerStampForISO, startOfToday, parseISO } from './utils';
 import Dashboard from './components/Dashboard';
 import Profile from './components/Profile';
 import Transfer from './components/Transfer';
 import Activity from './components/Activity';
 import Investment from './components/Investment';
 import BottomNav from './components/BottomNav';
-import ChatAssistant from './components/ChatAssistant';
 import Login from './components/Login';
 
+const FUND_NAME = 'Stanbic High-Yield Mutual Fund';
+
+// Seed state as of 09 July 2026:
+//  - The 06 Jul fund has already MATURED and its ₦3,650,000 (interest included) is paid out.
+//  - The remaining funds are active and pay out on their due dates.
 const INITIAL_USER: UserProfile = {
   name: 'David Jaiye Sokeyo',
   accountNumber: '0002874480',
-  accountType: 'SAVINGS ACCOUNT',
-  balance: 175000.00,
-  investmentBalance: 21080000.00,
+  accountType: 'Savings Account',
+  balance: 4825000.0, // 175,000 opening + 3,650,000 matured payout + 1,000,000 deposit
+  investmentBalance: 17430000.0, // sum of the three active fund values
   activeInvestments: [
     {
-      id: 'inv-july-10',
-      amount: 3350000,
-      startDate: '2026-05-10',
-      maturityDate: '10 July 2026',
-      interestRate: 5.42,
-      durationMonths: 2,
-      name: 'Stanbic Mutual High-Yield Fund'
-    },
-    {
-      id: 'inv-july-6',
+      id: 'inv-jul-06',
+      name: FUND_NAME,
       amount: 3650000,
-      startDate: '2026-05-06',
-      maturityDate: '06 July 2026',
       interestRate: 5.42,
       durationMonths: 2,
-      name: 'Stanbic Mutual High-Yield Fund'
+      startDate: '2026-05-06',
+      maturityDate: '2026-07-06',
+      status: 'matured',
+      payoutDate: '2026-07-06',
     },
     {
-      id: 'inv-aug-7',
-      amount: 8500000,
-      startDate: '2026-05-07',
-      maturityDate: '07 August 2026',
+      id: 'inv-jul-10',
+      name: FUND_NAME,
+      amount: 3350000,
       interestRate: 5.42,
-      durationMonths: 3,
-      name: 'Stanbic Mutual High-Yield Fund'
+      durationMonths: 2,
+      startDate: '2026-05-10',
+      maturityDate: '2026-07-10',
+      status: 'active',
     },
     {
-      id: 'inv-aug-3',
+      id: 'inv-aug-03',
+      name: FUND_NAME,
       amount: 5580000,
-      startDate: '2026-05-03',
-      maturityDate: '03 August 2026',
       interestRate: 5.42,
       durationMonths: 3,
-      name: 'Stanbic Mutual High-Yield Fund'
-    }
-  ]
+      startDate: '2026-05-03',
+      maturityDate: '2026-08-03',
+      status: 'active',
+    },
+    {
+      id: 'inv-aug-07',
+      name: FUND_NAME,
+      amount: 8500000,
+      interestRate: 5.42,
+      durationMonths: 3,
+      startDate: '2026-05-07',
+      maturityDate: '2026-08-07',
+      status: 'active',
+    },
+  ],
 };
 
 const INITIAL_TRANSACTIONS: Transaction[] = [
-  { 
-    id: 'tx-initial-balance-credit', 
-    name: 'Account Credit: SYSTEM RESET', 
-    type: 'credit', 
-    amount: 175000, 
-    date: '05/07/26 . 09:00 AM', 
+  {
+    id: 'tx-deposit-djs',
+    name: 'Transfer from David Jaiye Sokeyo',
+    type: 'credit',
+    amount: 1000000,
+    date: '09/07/26 . 10:00 AM',
+    category: 'transfer',
   },
-  { 
-    id: 'tx-inv-1', 
-    name: 'Stanbic Mutual funds Subscription', 
-    type: 'debit', 
-    amount: 3350000, 
-    date: '10/05/26 . 10:30 AM', 
+  {
+    id: 'tx-payout-jul-06',
+    name: 'Investment Payout — High-Yield Fund',
+    type: 'credit',
+    amount: 3650000,
+    date: '06/07/26 . 09:00 AM',
+    category: 'payout',
   },
-  { 
-    id: 'tx-inv-2', 
-    name: 'Stanbic Mutual funds Subscription', 
-    type: 'debit', 
-    amount: 3650000, 
-    date: '06/05/26 . 02:45 PM', 
+  {
+    id: 'tx-opening-credit',
+    name: 'Account Opening Credit',
+    type: 'credit',
+    amount: 175000,
+    date: '05/07/26 . 09:00 AM',
+    category: 'system',
   },
-  { 
-    id: 'tx-inv-3', 
-    name: 'Stanbic Mutual funds Subscription', 
-    type: 'debit', 
-    amount: 8500000, 
-    date: '07/05/26 . 01:15 PM', 
+  {
+    id: 'tx-sub-jul-10',
+    name: 'Mutual Fund Subscription',
+    type: 'debit',
+    amount: 3350000,
+    date: '10/05/26 . 10:30 AM',
+    category: 'investment',
   },
-  { 
-    id: 'tx-inv-4', 
-    name: 'Stanbic Mutual funds Subscription', 
-    type: 'debit', 
-    amount: 5580000, 
-    date: '03/05/26 . 09:15 AM', 
-  }
+  {
+    id: 'tx-sub-aug-07',
+    name: 'Mutual Fund Subscription',
+    type: 'debit',
+    amount: 8500000,
+    date: '07/05/26 . 01:15 PM',
+    category: 'investment',
+  },
+  {
+    id: 'tx-sub-jul-06',
+    name: 'Mutual Fund Subscription',
+    type: 'debit',
+    amount: 3650000,
+    date: '06/05/26 . 02:45 PM',
+    category: 'investment',
+  },
+  {
+    id: 'tx-sub-aug-03',
+    name: 'Mutual Fund Subscription',
+    type: 'debit',
+    amount: 5580000,
+    date: '03/05/26 . 09:15 AM',
+    category: 'investment',
+  },
 ];
 
+// Bumped storage version so the new data model loads cleanly.
+const STORAGE = {
+  auth: 'stanbic_v13_auth',
+  user: 'stanbic_v13_user',
+  tx: 'stanbic_v13_tx',
+};
+
+const loadJSON = <T,>(key: string, fallback: T): T => {
+  const saved = localStorage.getItem(key);
+  if (!saved) return fallback;
+  try {
+    const parsed = JSON.parse(saved);
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 const App: React.FC = () => {
-  // Bumped to v11 to ensure a clean slate and exact data representation on first load
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('stanbic_v11_auth') === 'true';
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+    () => localStorage.getItem(STORAGE.auth) === 'true',
+  );
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(AppScreen.DASHBOARD);
-  
-  const [user, setUser] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('stanbic_v11_user_data');
-    console.log("Loading user from localStorage:", saved);
-    
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object' && 'activeInvestments' in parsed) {
-          return parsed;
-        }
-      } catch (e) {
-        console.error("Storage error:", e);
-      }
-    }
-    
-    // Default state with the correct July 5 numbers
-    return {
-        ...INITIAL_USER,
-      };
-  });
+  const [user, setUser] = useState<UserProfile>(() => loadJSON(STORAGE.user, INITIAL_USER));
+  const [transactions, setTransactions] = useState<Transaction[]>(() =>
+    loadJSON(STORAGE.tx, INITIAL_TRANSACTIONS),
+  );
 
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem('stanbic_v11_transactions_data');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
-      } catch (e) {
-        console.error("Storage error:", e);
-      }
-    }
-    return INITIAL_TRANSACTIONS;
-  });
+  useEffect(() => localStorage.setItem(STORAGE.user, JSON.stringify(user)), [user]);
+  useEffect(() => localStorage.setItem(STORAGE.tx, JSON.stringify(transactions)), [transactions]);
+  useEffect(() => localStorage.setItem(STORAGE.auth, String(isAuthenticated)), [isAuthenticated]);
 
-  const [isChatOpen, setIsChatOpen] = useState(false);
-
+  // Maturity engine: any active fund whose maturity date has arrived is paid out
+  // (its full value credited to the available balance) exactly once.
   useEffect(() => {
-    console.log("Saving user to localStorage:", user);
-    localStorage.setItem('stanbic_v11_user_data', JSON.stringify(user));
-  }, [user]);
+    const today = startOfToday();
+    const due = user.activeInvestments.filter(
+      (inv) => inv.status === 'active' && parseISO(inv.maturityDate) <= today,
+    );
+    if (due.length === 0) return;
 
-  useEffect(() => {
-    console.log("Saving transactions to localStorage:", transactions);
-    localStorage.setItem('stanbic_v11_transactions_data', JSON.stringify(transactions));
-  }, [transactions]);
+    const credited = due.reduce((sum, inv) => sum + inv.amount, 0);
 
-  useEffect(() => {
-    localStorage.setItem('stanbic_v11_auth', isAuthenticated.toString());
-  }, [isAuthenticated]);
+    setUser((prev) => ({
+      ...prev,
+      balance: prev.balance + credited,
+      investmentBalance: prev.investmentBalance - credited,
+      activeInvestments: prev.activeInvestments.map((inv) =>
+        due.find((d) => d.id === inv.id)
+          ? { ...inv, status: 'matured', payoutDate: inv.maturityDate }
+          : inv,
+      ),
+    }));
 
-
-
-
-  useEffect(() => {
-    const today = new Date();
-    
-    const maturedInvestments = user.activeInvestments.filter(inv => {
-      const parts = inv.maturityDate.split(' ');
-      const day = parseInt(parts[0]);
-      const monthStr = parts[1];
-      const year = parseInt(parts[2]);
-      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-      const month = months.indexOf(monthStr);
-      const maturityDate = new Date(year, month, day);
-      return maturityDate <= today;
-    });
-
-    if (maturedInvestments.length > 0) {
-      let balanceIncrease = 0;
-      maturedInvestments.forEach(inv => {
-        balanceIncrease += inv.amount;
-      });
-
-      // Check if we need to re-invest the March one
-      const marchInvestment = maturedInvestments.find(inv => inv.id === 'pre-2');
-
-      setUser(prev => {
-        const updatedInvestments = prev.activeInvestments.filter(inv => !maturedInvestments.find(m => m.id === inv.id));
-        
-        let newBalance = prev.balance + balanceIncrease;
-        let newInvestmentBalance = prev.investmentBalance - balanceIncrease;
-
-        if (marchInvestment) {
-          newBalance -= marchInvestment.amount;
-          newInvestmentBalance += marchInvestment.amount;
-          
-          const now = new Date();
-          const maturityDate = new Date();
-          maturityDate.setMonth(maturityDate.getMonth() + 2);
-          
-          const maturityDateStr = maturityDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
-          const startDateStr = now.toISOString().split('T')[0];
-          
-          const newInvestment: ActiveInvestment = {
-            id: `inv-${Date.now()}`,
-            amount: marchInvestment.amount,
-            startDate: startDateStr,
-            maturityDate: maturityDateStr,
-            interestRate: 5.42,
-            durationMonths: 2,
-            name: 'Stanbic Mutual High-Yield Fund'
-          };
-          updatedInvestments.push(newInvestment);
-        }
-
-        return {
-          ...prev,
-          balance: newBalance,
-          investmentBalance: newInvestmentBalance,
-          activeInvestments: updatedInvestments
-        };
-      });
-
-      // Log transactions for payouts
-      const now = new Date();
-      const txDateStr = `${now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' })} . ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
-      
-      const newTxs: Transaction[] = maturedInvestments.map(inv => ({
-        id: `tx-payout-${inv.id}-${Date.now()}`,
-        name: `Investment Payout: ${inv.name}`,
-        type: 'credit',
+    setTransactions((prev) => [
+      ...due.map((inv) => ({
+        id: `tx-payout-${inv.id}`,
+        name: 'Investment Payout — High-Yield Fund',
+        type: 'credit' as const,
         amount: inv.amount,
-        date: txDateStr,
-      }));
-      setTransactions(prev => [...newTxs, ...prev]);
-    }
+        date: ledgerStampForISO(inv.maturityDate),
+        category: 'payout' as const,
+      })),
+      ...prev,
+    ]);
   }, [user.activeInvestments]);
 
-  const handleInvestmentComplete = (amount: number, months: number) => {
+  const handleInvestmentComplete = (capital: number, months: number, rate: number) => {
     const now = new Date();
-    const maturityDate = new Date();
-    maturityDate.setMonth(maturityDate.getMonth() + months);
-    
-    const maturityDateStr = maturityDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
-    const startDateStr = now.toISOString().split('T')[0];
-    const txDateStr = `${now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' })} . ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+    const maturity = new Date(now.getFullYear(), now.getMonth() + months, now.getDate());
+    const toISO = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    // Stored value is the full maturity payout (principal + interest).
+    const payout = maturityValue(capital, rate, months);
 
     const newInvestment: ActiveInvestment = {
-      id: `inv-${Date.now()}`,
-      amount: amount,
-      startDate: startDateStr,
-      maturityDate: maturityDateStr,
-      interestRate: 5.42,
+      id: `inv-${now.getTime()}`,
+      name: FUND_NAME,
+      amount: payout,
+      interestRate: rate,
       durationMonths: months,
-      name: 'Stanbic Mutual High-Yield Fund'
+      startDate: toISO(now),
+      maturityDate: toISO(maturity),
+      status: 'active',
     };
 
-    setUser(prev => ({
+    setUser((prev) => ({
       ...prev,
-      balance: prev.balance - amount,
-      investmentBalance: prev.investmentBalance + amount,
-      activeInvestments: [newInvestment, ...prev.activeInvestments]
+      balance: prev.balance - capital,
+      investmentBalance: prev.investmentBalance + payout,
+      activeInvestments: [newInvestment, ...prev.activeInvestments],
     }));
-    
-    const newTx: Transaction = {
-      id: `tx-${Date.now()}`,
-      name: 'Stanbic Mutual funds Subscription',
-      type: 'debit',
-      amount: amount,
-      date: txDateStr,
-    };
-    setTransactions(prev => [newTx, ...prev]);
+
+    setTransactions((prev) => [
+      {
+        id: `tx-sub-${now.getTime()}`,
+        name: 'Mutual Fund Subscription',
+        type: 'debit',
+        amount: capital,
+        date: nowLedgerStamp(),
+        category: 'investment',
+      },
+      ...prev,
+    ]);
+  };
+
+  const handleTransferComplete = (amount: number, recipient: string) => {
+    setTransactions((prev) => [
+      {
+        id: `tx-out-${Date.now()}`,
+        name: recipient || 'Funds Transfer',
+        type: 'debit',
+        amount,
+        date: nowLedgerStamp(),
+        category: 'transfer',
+      },
+      ...prev,
+    ]);
+    setUser((prev) => ({ ...prev, balance: prev.balance - amount }));
+    setCurrentScreen(AppScreen.DASHBOARD);
   };
 
   const handleLogout = () => {
@@ -276,73 +258,40 @@ const App: React.FC = () => {
 
   const renderScreen = () => {
     switch (currentScreen) {
-      case AppScreen.DASHBOARD:
-        return <Dashboard 
-          user={user} 
-          onTransfer={() => setCurrentScreen(AppScreen.TRANSFER)} 
-          onViewActivity={() => setCurrentScreen(AppScreen.ACTIVITY)}
-          onViewPortfolio={() => setCurrentScreen(AppScreen.INVESTMENT)}
-        />;
       case AppScreen.PROFILE:
-        return <Profile user={user} />;
+        return <Profile user={user} onLogout={handleLogout} />;
       case AppScreen.TRANSFER:
-        return <Transfer 
-          user={user} 
-          transactions={transactions} 
-          onBack={() => setCurrentScreen(AppScreen.DASHBOARD)}
-          onTransferComplete={(amount) => {
-            const now = new Date();
-            const txDateStr = `${now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' })} . ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
-            const newTx: Transaction = {
-              id: `tx-out-${Date.now()}`,
-              name: 'Transfer Out',
-              type: 'debit',
-              amount: amount,
-              date: txDateStr,
-            };
-            setTransactions(prev => [newTx, ...prev]);
-            setUser(prev => ({ ...prev, balance: prev.balance - amount }));
-            setCurrentScreen(AppScreen.DASHBOARD);
-          }}
-        />;
+        return (
+          <Transfer
+            user={user}
+            transactions={transactions}
+            onBack={() => setCurrentScreen(AppScreen.DASHBOARD)}
+            onTransferComplete={handleTransferComplete}
+          />
+        );
       case AppScreen.ACTIVITY:
-        return <Activity transactions={transactions} />;
+        return <Activity transactions={transactions} user={user} />;
       case AppScreen.INVESTMENT:
         return <Investment user={user} onInvestmentComplete={handleInvestmentComplete} />;
+      case AppScreen.DASHBOARD:
       default:
-        return <Dashboard 
-          user={user} 
-          onTransfer={() => setCurrentScreen(AppScreen.TRANSFER)} 
-          onViewActivity={() => setCurrentScreen(AppScreen.ACTIVITY)}
-          onViewPortfolio={() => setCurrentScreen(AppScreen.INVESTMENT)}
-        />;
+        return (
+          <Dashboard
+            user={user}
+            onTransfer={() => setCurrentScreen(AppScreen.TRANSFER)}
+            onViewActivity={() => setCurrentScreen(AppScreen.ACTIVITY)}
+            onViewPortfolio={() => setCurrentScreen(AppScreen.INVESTMENT)}
+          />
+        );
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
-      <div className="flex-1 w-full max-w-2xl mx-auto bg-white shadow-xl min-h-screen flex flex-col relative text-gray-900">
-        <div className="flex-1 overflow-y-auto custom-scrollbar pb-24">
-          {renderScreen()}
-        </div>
-
-        <button 
-          onClick={() => setIsChatOpen(!isChatOpen)}
-          className="fixed bottom-24 right-6 lg:right-[calc(50%-320px)] bg-[#0033a0] hover:bg-[#002880] text-white p-4 rounded-full shadow-lg transition-transform active:scale-95 z-50"
-          aria-label="Toggle Assistant"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
-        </button>
-
-        {isChatOpen && <ChatAssistant onClose={() => setIsChatOpen(false)} user={user} />}
-
-        <div className="sticky bottom-0 w-full z-10">
-          <BottomNav 
-            currentScreen={currentScreen} 
-            onNavigate={setCurrentScreen} 
-          />
+    <div className="min-h-screen bg-slate-100 font-sans flex flex-col">
+      <div className="flex-1 w-full max-w-md mx-auto bg-slate-50 min-h-screen flex flex-col relative text-slate-900 shadow-2xl shadow-slate-300/50">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pb-24">{renderScreen()}</div>
+        <div className="sticky bottom-0 w-full z-20">
+          <BottomNav currentScreen={currentScreen} onNavigate={setCurrentScreen} />
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
-import React from 'react';
-import { UserProfile, STANBIC_LOGO } from '../types';
+import React, { useState } from 'react';
+import { UserProfile } from '../types';
+import { formatAmount, formatDateLong, daysUntil } from '../utils';
 
 interface DashboardProps {
   user: UserProfile;
@@ -9,155 +10,131 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onTransfer, onViewActivity, onViewPortfolio }) => {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 2,
-    }).format(value);
-  };
+  const [showBalance, setShowBalance] = useState(true);
+
+  const initials = user.name
+    .split(' ')
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join('');
+  const maskedAccount = `•••• ${user.accountNumber.slice(-4)}`;
+
+  const active = user.activeInvestments
+    .filter((i) => i.status === 'active')
+    .sort((a, b) => daysUntil(a.maturityDate) - daysUntil(b.maturityDate));
+  const nextPayout = active[0];
 
   return (
-    <div className="bg-[#f4f6fa] min-h-screen flex flex-col font-sans pb-12">
-      {/* Top Banner & Header (Stanbic Blue Theme) */}
-      <div className="bg-[#0033a0] text-white pt-8 pb-16 px-6 rounded-b-[2.5rem] shadow-lg relative overflow-hidden">
-        {/* Subtle decorative background glow */}
-        <div className="absolute -top-12 -left-12 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-12 -right-12 w-64 h-64 bg-blue-400/15 rounded-full blur-3xl"></div>
+    <div className="bg-slate-50 min-h-full">
+      {/* Header + balance hero */}
+      <div className="bg-gradient-to-b from-[#00246e] to-[#0033a0] px-6 pt-10 pb-20 rounded-b-[2rem] text-white relative overflow-hidden">
+        <div className="absolute -top-16 -right-16 w-56 h-56 bg-white/5 rounded-full" />
+        <div className="absolute top-20 -left-20 w-56 h-56 bg-white/5 rounded-full" />
 
-        {/* Header bar */}
-        <div className="flex items-center justify-between mb-8 relative z-10">
-          <button className="p-2 -ml-2 text-white/90 hover:text-white hover:bg-white/10 rounded-full transition-all">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <span className="text-sm font-bold tracking-[0.2em] uppercase text-white/90">Account Details</span>
-          <div className="flex items-center gap-2">
-            <img src={STANBIC_LOGO} alt="Stanbic Logo" className="w-7 h-auto filter brightness-0 invert" />
+        <div className="flex items-center justify-between relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center font-bold text-sm border border-white/10">
+              {initials}
+            </div>
+            <div>
+              <p className="text-[11px] text-blue-200/70 font-medium">Welcome back</p>
+              <p className="text-sm font-bold leading-tight">{user.name.split(' ')[0]} {user.name.split(' ').slice(-1)}</p>
+            </div>
           </div>
+          <button className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors relative">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <span className="absolute top-2 right-2.5 w-2 h-2 bg-amber-400 rounded-full ring-2 ring-[#0033a0]" />
+          </button>
         </div>
 
-        {/* Saved/Available Balance Violet Card (Identical to Inspiration Image) */}
-        <div className="relative bg-gradient-to-r from-[#b336a3] via-[#852fba] to-[#511bb5] p-6 rounded-3xl shadow-2xl overflow-hidden border border-white/10 transition-transform hover:scale-[1.01] duration-300">
-          {/* Wave background pattern lines inside the card */}
-          <div className="absolute inset-0 opacity-15 pointer-events-none mix-blend-overlay">
-            <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <path d="M0,50 Q25,70 50,50 T100,50 L100,100 L0,100 Z" fill="white" />
-              <path d="M0,30 Q25,45 50,30 T100,30 L100,100 L0,100 Z" fill="none" stroke="white" strokeWidth="2" />
-              <circle cx="85" cy="20" r="15" fill="none" stroke="white" strokeWidth="1" />
-              <circle cx="85" cy="20" r="8" fill="white" />
-            </svg>
+        <div className="mt-8 relative z-10">
+          <div className="flex items-center gap-2">
+            <p className="text-[11px] font-medium uppercase tracking-widest text-blue-200/70">
+              {user.accountType} · {maskedAccount}
+            </p>
+            <button onClick={() => setShowBalance((s) => !s)} className="text-blue-200/70 hover:text-white transition-colors">
+              {showBalance ? <EyeIcon /> : <EyeOffIcon />}
+            </button>
           </div>
-
-          <div className="flex justify-between items-start mb-6 relative z-10">
-            <div>
-              <span className="text-[10px] font-bold tracking-widest uppercase text-white/80">{user.accountType}</span>
-              <p className="text-white font-extrabold text-xs tracking-wider mt-0.5">David Jaiye Sokeyo</p>
-            </div>
-            <span className="text-xs font-semibold bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm tracking-wider">
-              {user.accountNumber}
+          <div className="flex items-baseline gap-1.5 mt-1.5">
+            <span className="text-base font-semibold text-blue-200/80">NGN</span>
+            <span className="text-4xl font-bold tracking-tight tabular-nums">
+              {showBalance ? formatAmount(user.balance) : '••••••••'}
             </span>
-          </div>
-
-          <div className="mb-6 relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white/70 block mb-1">Available Balance</span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-base font-bold text-white/90">NGN</span>
-              <span className="text-3xl font-black tracking-tight text-white">
-                {formatCurrency(user.balance).replace('NGN', '').trim()}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between relative z-10">
-            <div className="bg-white/15 px-3 py-1.5 rounded-full backdrop-blur-md flex items-center gap-1.5 text-[10px] font-bold text-green-300">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-              + NGN 125,000 this week
-            </div>
-            <span className="text-[9px] font-extrabold text-white/50 uppercase tracking-widest">Active & Secured</span>
           </div>
         </div>
       </div>
 
-      {/* Main Content Area overlapping the bottom curve */}
-      <div className="px-6 -mt-8 relative z-10 space-y-6">
-        
-        {/* Stanbic Mutual Funds card - Styled to fit beautifully */}
-        <button 
+      {/* Quick actions */}
+      <div className="px-6 -mt-12 relative z-10">
+        <div className="bg-white rounded-2xl shadow-lg shadow-slate-200/70 border border-slate-100 p-4 grid grid-cols-4 gap-1">
+          <Action icon={<TransferIcon />} label="Transfer" onClick={onTransfer} primary />
+          <Action icon={<InvestIcon />} label="Invest" onClick={onViewPortfolio} />
+          <Action icon={<ActivityIcon />} label="History" onClick={onViewActivity} />
+          <Action icon={<MoreIcon />} label="More" onClick={() => {}} />
+        </div>
+      </div>
+
+      <div className="px-6 pt-6 space-y-5">
+        {/* Investment summary */}
+        <button
           onClick={onViewPortfolio}
-          className="w-full text-left bg-white p-6 rounded-3xl shadow-[0_12px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_35px_rgba(0,0,0,0.06)] border border-gray-100/80 transition-all active:scale-[0.99] group relative overflow-hidden"
+          className="w-full text-left bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-shadow group"
         >
-          {/* Subtle gradient banner top border */}
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 to-[#0033a0]"></div>
-          
-          <div className="flex justify-between items-start mb-4">
+          <div className="flex items-start justify-between mb-4">
             <div>
-              <span className="text-[10px] font-extrabold text-blue-600/80 uppercase tracking-wider block">Stanbic Mutual Funds</span>
-              <h3 className="text-base font-black text-gray-800 mt-0.5">Total Wealth Value</h3>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#0033a0]">
+                Mutual Funds
+              </p>
+              <h3 className="text-sm font-bold text-slate-900 mt-0.5">Active Fund Value</h3>
             </div>
-            <div className="bg-blue-50 p-2.5 rounded-2xl group-hover:bg-[#0033a0] group-hover:text-white transition-all duration-300">
-              <svg className="w-5 h-5 text-[#0033a0] group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#0033a0] flex items-center justify-center group-hover:bg-[#0033a0] group-hover:text-white transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
           </div>
-          <div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xs font-bold text-gray-400">NGN</span>
-              <span className="text-2xl font-black tracking-tight text-[#0033a0]">
-                {formatCurrency(user.investmentBalance).replace('NGN', '').trim()}
-              </span>
-            </div>
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
-              <p className="text-[10px] text-gray-400 flex items-center gap-1.5 font-bold uppercase tracking-wider">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                {user.activeInvestments.length} Active Mutual Funds
-              </p>
-              <span className="text-[10px] font-bold uppercase text-blue-600 group-hover:translate-x-1 transition-transform">View All →</span>
-            </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-xs font-bold text-slate-400">NGN</span>
+            <span className="text-2xl font-bold text-slate-900 tabular-nums">
+              {formatAmount(user.investmentBalance)}
+            </span>
           </div>
+
+          {nextPayout && (
+            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-amber-400 rounded-full" />
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                    Next payout
+                  </p>
+                  <p className="text-xs font-bold text-slate-700">{formatDateLong(nextPayout.maturityDate)}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold text-emerald-600 tabular-nums">
+                  +{formatAmount(nextPayout.amount, false)}
+                </p>
+                <p className="text-[10px] font-medium text-slate-400">
+                  in {Math.max(0, daysUntil(nextPayout.maturityDate))} days
+                </p>
+              </div>
+            </div>
+          )}
         </button>
 
-        {/* Quick Actions (Inspiration Design: White circle, thin border, dark blue text) */}
-        <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-gray-100 flex justify-around items-center">
-          <QuickActionButton icon="bill" label="Bills" />
-          <QuickActionButton icon="transfer" label="Transfer" onClick={onTransfer} active />
-          <QuickActionButton icon="airtime" label="Airtime" />
-        </div>
-
-        {/* Manage Account Section - Unified Clean Container like Inspiration */}
-        <div className="space-y-3">
-          <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 px-1">Manage Account</h2>
-          <div className="bg-white rounded-3xl shadow-[0_12px_35px_rgba(0,0,0,0.03)] border border-gray-100/80 overflow-hidden divide-y divide-gray-100">
-            <MenuButton 
-              icon={<ClockIcon />} 
-              title="Account Activity" 
-              description="View all related account activity" 
-              color="bg-[#0033a0]/10 text-[#0033a0]" 
-              onClick={onViewActivity}
-            />
-            <MenuButton 
-              icon={<FreezeIcon />} 
-              title="Freeze Account" 
-              description="Temporarily disable access to your account" 
-              color="bg-sky-50 text-sky-500" 
-              onClick={() => {}}
-            />
-            <MenuButton 
-              icon={<LimitIcon />} 
-              title="Set Transaction Limit" 
-              description="Set a limit to how much you can withdraw" 
-              color="bg-indigo-50 text-indigo-600" 
-              onClick={() => {}}
-            />
-            <MenuButton 
-              icon={<UpgradeIcon />} 
-              title="Upgrade Account" 
-              description="Upgrade your account to enjoy more benefits" 
-              color="bg-purple-50 text-purple-600" 
-              onClick={() => {}}
-            />
+        {/* Services */}
+        <div>
+          <h2 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3 px-1">
+            Manage Account
+          </h2>
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm divide-y divide-slate-50 overflow-hidden">
+            <MenuRow icon={<ClockIcon />} title="Account Activity" subtitle="View all transactions" onClick={onViewActivity} tint="bg-blue-50 text-[#0033a0]" />
+            <MenuRow icon={<ShieldIcon />} title="Card & Security" subtitle="Freeze card, set limits" onClick={() => {}} tint="bg-indigo-50 text-indigo-600" />
+            <MenuRow icon={<StarIcon />} title="Upgrade Account" subtitle="Unlock premium benefits" onClick={() => {}} tint="bg-amber-50 text-amber-600" />
           </div>
         </div>
       </div>
@@ -165,55 +142,90 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onTransfer, onViewActivity,
   );
 };
 
-const QuickActionButton: React.FC<{ icon: string; label: string; onClick?: () => void; active?: boolean }> = ({ icon, label, onClick, active }) => {
-  const icons = {
-    bill: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />,
-    transfer: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />,
-    airtime: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-  };
-
-  return (
-    <button onClick={onClick} className="flex flex-col items-center gap-2.5 transition-transform active:scale-95 group">
-      <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-all ${active ? 'bg-white border-[#0033a0] text-[#0033a0] shadow-md scale-105' : 'bg-white border-gray-100 text-gray-400 group-hover:border-gray-300'}`}>
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {icons[icon as keyof typeof icons]}
-        </svg>
-      </div>
-      <span className={`text-[10px] font-extrabold uppercase tracking-widest ${active ? 'text-[#0033a0]' : 'text-gray-400'}`}>{label}</span>
-    </button>
-  );
-};
-
-const MenuButton: React.FC<{ icon: React.ReactNode; title: string; description: string; color: string; onClick: () => void }> = ({ icon, title, description, color, onClick }) => (
-  <button onClick={onClick} className="w-full flex items-center justify-between p-4.5 hover:bg-gray-50/80 transition-colors group">
-    <div className="flex items-center gap-4">
-      <div className={`${color} w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm font-bold`}>
-        {icon}
-      </div>
-      <div className="text-left">
-        <h3 className="text-sm font-black text-gray-800 group-hover:text-[#0033a0] transition-colors">{title}</h3>
-        <p className="text-[11px] text-gray-400 font-medium">{description}</p>
-      </div>
+const Action: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void; primary?: boolean }> = ({
+  icon,
+  label,
+  onClick,
+  primary,
+}) => (
+  <button onClick={onClick} className="flex flex-col items-center gap-2 py-1 group">
+    <div
+      className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-95 ${
+        primary ? 'bg-[#0033a0] text-white shadow-md shadow-blue-900/20' : 'bg-slate-50 text-[#0033a0] group-hover:bg-slate-100'
+      }`}
+    >
+      {icon}
     </div>
-    <div className="w-6.5 h-6.5 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center group-hover:bg-[#0033a0]/10 group-hover:text-[#0033a0] transition-all">
-      <svg className="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-      </svg>
-    </div>
+    <span className="text-[10px] font-bold text-slate-500">{label}</span>
   </button>
 );
 
+const MenuRow: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  onClick: () => void;
+  tint: string;
+}> = ({ icon, title, subtitle, onClick, tint }) => (
+  <button onClick={onClick} className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors group">
+    <div className="flex items-center gap-3.5">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${tint}`}>{icon}</div>
+      <div className="text-left">
+        <h3 className="text-sm font-bold text-slate-800">{title}</h3>
+        <p className="text-[11px] text-slate-400 font-medium">{subtitle}</p>
+      </div>
+    </div>
+    <svg className="w-4 h-4 text-slate-300 group-hover:text-[#0033a0] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
+  </button>
+);
+
+const TransferIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+  </svg>
+);
+const InvestIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+  </svg>
+);
+const ActivityIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+const MoreIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+  </svg>
+);
 const ClockIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
 );
-const FreezeIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 9a3 3 0 100 6 3 3 0 000-6z"/></svg>
+const ShieldIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+  </svg>
 );
-const LimitIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+const StarIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+  </svg>
 );
-const UpgradeIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 11l7-7 7 7M5 19l7-7 7 7"/></svg>
+const EyeIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+  </svg>
+);
+const EyeOffIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+  </svg>
 );
 
 export default Dashboard;
