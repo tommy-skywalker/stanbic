@@ -1,0 +1,7 @@
+{
+  "name": "Stanbic IBTC - Premium Mobile Banking",
+  "description": "A high-fidelity mobile banking application for Stanbic IBTC, featuring account management, Stanbic Mutual funds, and a Gemini-powered financial assistant.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
