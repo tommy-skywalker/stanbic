@@ -20,7 +20,7 @@ const INITIAL_USER: UserProfile = {
   name: 'David Jaiye Sokeyo',
   accountNumber: '0002874480',
   accountType: 'Savings Account',
-  balance: 3002345.0,
+  balance: 3177345.0,
   investmentBalance: 19080000.0, // 5,000,000 + 5,580,000 + 8,500,000 active fund values
   activeInvestments: [
     {
@@ -78,7 +78,7 @@ const INITIAL_USER: UserProfile = {
   ],
 };
 
-// Reconciles: 3,650,000 + 1,002,345 + 3,350,000 − 5,000,000 = 3,002,345
+// Reconciles: 175,000 + 3,650,000 + 1,002,345 + 3,350,000 − 5,000,000 = 3,177,345
 const INITIAL_TRANSACTIONS: Transaction[] = [
   {
     id: 'tx-sub-sep-10',
@@ -111,6 +111,14 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     amount: 3650000,
     date: '06/07/26 . 09:00 AM',
     category: 'payout',
+  },
+  {
+    id: 'tx-opening-credit',
+    name: 'Account Opening Credit',
+    type: 'credit',
+    amount: 175000,
+    date: '05/07/26 . 09:00 AM',
+    category: 'system',
   },
   {
     id: 'tx-sub-jul-10',
@@ -148,9 +156,9 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
 
 // Bumped storage version so the new data model loads cleanly.
 const STORAGE = {
-  auth: 'stanbic_v15_auth',
-  user: 'stanbic_v15_user',
-  tx: 'stanbic_v15_tx',
+  auth: 'stanbic_v16_auth',
+  user: 'stanbic_v16_user',
+  tx: 'stanbic_v16_tx',
 };
 
 const loadJSON = <T,>(key: string, fallback: T): T => {
