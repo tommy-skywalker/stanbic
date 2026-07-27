@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AppScreen, UserProfile, Transaction, ActiveInvestment } from './types';
 import { maturityValue, nowLedgerStamp, ledgerStampForISO, startOfToday, parseISO } from './utils';
+import { isSyncEnabled, fetchState, saveState, RemoteState } from './services/db';
 import Dashboard from './components/Dashboard';
 import Profile from './components/Profile';
 import Transfer from './components/Transfer';
@@ -152,9 +153,85 @@ const App: React.FC = () => {
     loadJSON(STORAGE.tx, INITIAL_TRANSACTIONS),
   );
 
+  // Cross-device sync bookkeeping (refs so they don't trigger re-renders).
+  const syncReadyRef = useRef(false); // true once the initial remote load resolves
+  const pendingRef = useRef(false); // true while a local change is waiting to be saved
+  const lastSyncedRef = useRef(''); // JSON of the state last saved-to / applied-from remote
+
   useEffect(() => localStorage.setItem(STORAGE.user, JSON.stringify(user)), [user]);
   useEffect(() => localStorage.setItem(STORAGE.tx, JSON.stringify(transactions)), [transactions]);
   useEffect(() => localStorage.setItem(STORAGE.auth, String(isAuthenticated)), [isAuthenticated]);
+
+  // Load shared state from Supabase on open, then poll for remote changes.
+  useEffect(() => {
+    if (!isSyncEnabled()) {
+      syncReadyRef.current = true; // local-only mode
+      return;
+    }
+    let cancelled = false;
+
+    const apply = (remote: RemoteState) => {
+      if (pendingRef.current) return; // don't overwrite an unsaved local change
+      const json = JSON.stringify(remote.data);
+      if (json === lastSyncedRef.current) return; // nothing new
+      lastSyncedRef.current = json;
+      setUser(remote.data.user);
+      setTransactions(remote.data.transactions);
+    };
+
+    (async () => {
+      try {
+        const remote = await fetchState();
+        if (cancelled) return;
+        if (remote) {
+          apply(remote);
+        } else {
+          const seed = { user, transactions };
+          lastSyncedRef.current = JSON.stringify(seed);
+          await saveState(seed);
+        }
+      } catch (e) {
+        console.warn('Sync init failed, running local-only:', e);
+      } finally {
+        syncReadyRef.current = true;
+      }
+    })();
+
+    const interval = setInterval(async () => {
+      try {
+        const remote = await fetchState();
+        if (!cancelled && remote) apply(remote);
+      } catch {
+        /* ignore transient poll errors */
+      }
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Push local changes to the shared record (debounced, last-write-wins).
+  useEffect(() => {
+    if (!isSyncEnabled() || !syncReadyRef.current) return;
+    const state = { user, transactions };
+    const json = JSON.stringify(state);
+    if (json === lastSyncedRef.current) return;
+    pendingRef.current = true;
+    const t = setTimeout(async () => {
+      try {
+        await saveState(state);
+        lastSyncedRef.current = json;
+      } catch (e) {
+        console.warn('Sync save failed:', e);
+      } finally {
+        pendingRef.current = false;
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [user, transactions]);
 
   // Maturity engine: any active fund whose maturity date has arrived is paid out
   // (its full value credited to the available balance) exactly once.
