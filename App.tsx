@@ -20,7 +20,7 @@ const INITIAL_USER: UserProfile = {
   name: 'David Jaiye Sokeyo',
   accountNumber: '0002874480',
   accountType: 'Savings Account',
-  balance: 3000000.0,
+  balance: 3002345.0,
   investmentBalance: 19080000.0, // 5,000,000 + 5,580,000 + 8,500,000 active fund values
   activeInvestments: [
     {
@@ -78,16 +78,8 @@ const INITIAL_USER: UserProfile = {
   ],
 };
 
-// Reconciles: 175,000 + 3,650,000 + 1,000,000 + 3,350,000 − 5,000,000 − 175,000 = 3,000,000
+// Reconciles: 3,650,000 + 1,002,345 + 3,350,000 − 5,000,000 = 3,002,345
 const INITIAL_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'tx-bill-jul-12',
-    name: 'Electricity Bill — IKEDC',
-    type: 'debit',
-    amount: 175000,
-    date: '12/07/26 . 06:12 PM',
-    category: 'system',
-  },
   {
     id: 'tx-sub-sep-10',
     name: 'Mutual Fund Subscription',
@@ -108,7 +100,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     id: 'tx-deposit-djs',
     name: 'Transfer from David Jaiye Sokeyo',
     type: 'credit',
-    amount: 1000000,
+    amount: 1002345,
     date: '09/07/26 . 10:00 AM',
     category: 'transfer',
   },
@@ -119,14 +111,6 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     amount: 3650000,
     date: '06/07/26 . 09:00 AM',
     category: 'payout',
-  },
-  {
-    id: 'tx-opening-credit',
-    name: 'Account Opening Credit',
-    type: 'credit',
-    amount: 175000,
-    date: '05/07/26 . 09:00 AM',
-    category: 'system',
   },
   {
     id: 'tx-sub-jul-10',
@@ -164,9 +148,9 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
 
 // Bumped storage version so the new data model loads cleanly.
 const STORAGE = {
-  auth: 'stanbic_v14_auth',
-  user: 'stanbic_v14_user',
-  tx: 'stanbic_v14_tx',
+  auth: 'stanbic_v15_auth',
+  user: 'stanbic_v15_user',
+  tx: 'stanbic_v15_tx',
 };
 
 const loadJSON = <T,>(key: string, fallback: T): T => {
