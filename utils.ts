@@ -8,9 +8,9 @@ export const formatNaira = (value: number, withDecimals = true): string =>
     maximumFractionDigits: withDecimals ? 2 : 0,
   }).format(value);
 
-// Amount without the currency symbol (e.g. "4,220,660.60") — pair with a styled "NGN" label.
+// Amount without the currency symbol (e.g. "4,220,660.60") — pair with your own ₦/NGN label.
 export const formatAmount = (value: number, withDecimals = true): string =>
-  formatNaira(value, withDecimals).replace(/NGN\s?/, '').trim();
+  formatNaira(value, withDecimals).replace(/NGN|₦/g, '').trim();
 
 // Parse a "yyyy-mm-dd" string as a LOCAL date (avoids the UTC-midnight off-by-one).
 export const parseISO = (iso: string): Date => {

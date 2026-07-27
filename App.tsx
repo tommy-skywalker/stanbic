@@ -12,15 +12,16 @@ import Login from './components/Login';
 
 const FUND_NAME = 'Stanbic High-Yield Mutual Fund';
 
-// Seed state as of 09 July 2026:
-//  - The 06 Jul fund has already MATURED and its ₦3,650,000 (interest included) is paid out.
-//  - The remaining funds are active and pay out on their due dates.
+// Seed state as of late July 2026:
+//  - 06 Jul and 10 Jul funds have MATURED and their values (interest included) were paid out.
+//  - A new ₦5,000,000 plan started 10 Jul and pays out 10 Sep.
+//  - Ledger reconciles to a ₦3,000,000 available balance.
 const INITIAL_USER: UserProfile = {
   name: 'David Jaiye Sokeyo',
   accountNumber: '0002874480',
   accountType: 'Savings Account',
-  balance: 4825000.0, // 175,000 opening + 3,650,000 matured payout + 1,000,000 deposit
-  investmentBalance: 17430000.0, // sum of the three active fund values
+  balance: 3000000.0,
+  investmentBalance: 19080000.0, // 5,000,000 + 5,580,000 + 8,500,000 active fund values
   activeInvestments: [
     {
       id: 'inv-jul-06',
@@ -41,6 +42,17 @@ const INITIAL_USER: UserProfile = {
       durationMonths: 2,
       startDate: '2026-05-10',
       maturityDate: '2026-07-10',
+      status: 'matured',
+      payoutDate: '2026-07-10',
+    },
+    {
+      id: 'inv-sep-10',
+      name: FUND_NAME,
+      amount: 5000000,
+      interestRate: 5.42,
+      durationMonths: 2,
+      startDate: '2026-07-10',
+      maturityDate: '2026-09-10',
       status: 'active',
     },
     {
@@ -66,7 +78,32 @@ const INITIAL_USER: UserProfile = {
   ],
 };
 
+// Reconciles: 175,000 + 3,650,000 + 1,000,000 + 3,350,000 − 5,000,000 − 175,000 = 3,000,000
 const INITIAL_TRANSACTIONS: Transaction[] = [
+  {
+    id: 'tx-bill-jul-12',
+    name: 'Electricity Bill — IKEDC',
+    type: 'debit',
+    amount: 175000,
+    date: '12/07/26 . 06:12 PM',
+    category: 'system',
+  },
+  {
+    id: 'tx-sub-sep-10',
+    name: 'Mutual Fund Subscription',
+    type: 'debit',
+    amount: 5000000,
+    date: '10/07/26 . 11:45 AM',
+    category: 'investment',
+  },
+  {
+    id: 'tx-payout-jul-10',
+    name: 'Investment Payout — High-Yield Fund',
+    type: 'credit',
+    amount: 3350000,
+    date: '10/07/26 . 09:00 AM',
+    category: 'payout',
+  },
   {
     id: 'tx-deposit-djs',
     name: 'Transfer from David Jaiye Sokeyo',
@@ -127,9 +164,9 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
 
 // Bumped storage version so the new data model loads cleanly.
 const STORAGE = {
-  auth: 'stanbic_v13_auth',
-  user: 'stanbic_v13_user',
-  tx: 'stanbic_v13_tx',
+  auth: 'stanbic_v14_auth',
+  user: 'stanbic_v14_user',
+  tx: 'stanbic_v14_tx',
 };
 
 const loadJSON = <T,>(key: string, fallback: T): T => {
@@ -355,6 +392,7 @@ const App: React.FC = () => {
         return (
           <Dashboard
             user={user}
+            transactions={transactions}
             onTransfer={() => setCurrentScreen(AppScreen.TRANSFER)}
             onViewActivity={() => setCurrentScreen(AppScreen.ACTIVITY)}
             onViewPortfolio={() => setCurrentScreen(AppScreen.INVESTMENT)}
@@ -364,9 +402,9 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans flex flex-col">
-      <div className="flex-1 w-full max-w-md mx-auto bg-slate-50 min-h-screen flex flex-col relative text-slate-900 shadow-2xl shadow-slate-300/50">
-        <div className="flex-1 overflow-y-auto custom-scrollbar pb-24">{renderScreen()}</div>
+    <div className="min-h-screen bg-gray-200 font-sans flex flex-col">
+      <div className="flex-1 w-full max-w-md mx-auto bg-[#f4f5f7] min-h-screen flex flex-col relative text-gray-900 sm:border-x sm:border-gray-300">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pb-20">{renderScreen()}</div>
         <div className="sticky bottom-0 w-full z-20">
           <BottomNav currentScreen={currentScreen} onNavigate={setCurrentScreen} />
         </div>
