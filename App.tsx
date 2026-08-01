@@ -20,7 +20,7 @@ const INITIAL_USER: UserProfile = {
   name: 'David Jaiye Sokeyo',
   accountNumber: '0002874480',
   accountType: 'Savings Account',
-  balance: 3177345.0,
+  balance: 3057345.0,
   investmentBalance: 19080000.0, // 5,000,000 + 5,580,000 + 8,500,000 active fund values
   activeInvestments: [
     {
@@ -78,8 +78,16 @@ const INITIAL_USER: UserProfile = {
   ],
 };
 
-// Reconciles: 175,000 + 3,650,000 + 1,002,345 + 3,350,000 − 5,000,000 = 3,177,345
+// Reconciles: 175,000 + 3,650,000 + 1,002,345 + 3,350,000 − 5,000,000 − 120,000 = 3,057,345
 const INITIAL_TRANSACTIONS: Transaction[] = [
+  {
+    id: 'tx-withdraw-jul-27',
+    name: 'Transfer to David Jaiye Sokeyo',
+    type: 'debit',
+    amount: 120000,
+    date: '27/07/26 . 04:38 PM',
+    category: 'transfer',
+  },
   {
     id: 'tx-sub-sep-10',
     name: 'Mutual Fund Subscription',
@@ -156,10 +164,14 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
 
 // Bumped storage version so the new data model loads cleanly.
 const STORAGE = {
-  auth: 'stanbic_v16_auth',
-  user: 'stanbic_v16_user',
-  tx: 'stanbic_v16_tx',
+  auth: 'stanbic_v17_auth',
+  user: 'stanbic_v17_user',
+  tx: 'stanbic_v17_tx',
+  lastActive: 'stanbic_v17_last_active',
 };
+
+// Sign the user out after 15 minutes of inactivity.
+const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
 
 const loadJSON = <T,>(key: string, fallback: T): T => {
   const saved = localStorage.getItem(key);
@@ -173,9 +185,13 @@ const loadJSON = <T,>(key: string, fallback: T): T => {
 };
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
-    () => localStorage.getItem(STORAGE.auth) === 'true',
-  );
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const authed = localStorage.getItem(STORAGE.auth) === 'true';
+    // Expire the session if the app was last used more than 15 minutes ago.
+    const last = Number(localStorage.getItem(STORAGE.lastActive) || 0);
+    if (authed && last && Date.now() - last > SESSION_TIMEOUT_MS) return false;
+    return authed;
+  });
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(AppScreen.DASHBOARD);
   const [user, setUser] = useState<UserProfile>(() => loadJSON(STORAGE.user, INITIAL_USER));
   const [transactions, setTransactions] = useState<Transaction[]>(() =>
@@ -190,6 +206,26 @@ const App: React.FC = () => {
   useEffect(() => localStorage.setItem(STORAGE.user, JSON.stringify(user)), [user]);
   useEffect(() => localStorage.setItem(STORAGE.tx, JSON.stringify(transactions)), [transactions]);
   useEffect(() => localStorage.setItem(STORAGE.auth, String(isAuthenticated)), [isAuthenticated]);
+
+  // Inactivity timeout: any interaction refreshes the session; 15 idle minutes signs out.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const touch = () => localStorage.setItem(STORAGE.lastActive, String(Date.now()));
+    touch();
+    const events: (keyof WindowEventMap)[] = ['click', 'keydown', 'touchstart', 'scroll'];
+    events.forEach((e) => window.addEventListener(e, touch, { passive: true }));
+    const check = setInterval(() => {
+      const last = Number(localStorage.getItem(STORAGE.lastActive) || 0);
+      if (Date.now() - last > SESSION_TIMEOUT_MS) {
+        setIsAuthenticated(false);
+        setCurrentScreen(AppScreen.DASHBOARD);
+      }
+    }, 30000);
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, touch));
+      clearInterval(check);
+    };
+  }, [isAuthenticated]);
 
   // Load shared state from Supabase on open, then poll for remote changes.
   useEffect(() => {
