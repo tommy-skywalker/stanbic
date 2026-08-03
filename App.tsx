@@ -20,8 +20,8 @@ const INITIAL_USER: UserProfile = {
   name: 'David Jaiye Sokeyo',
   accountNumber: '0002874480',
   accountType: 'Savings Account',
-  balance: 3057345.0,
-  investmentBalance: 19080000.0, // 5,000,000 + 5,580,000 + 8,500,000 active fund values
+  balance: 3637345.0,
+  investmentBalance: 18500000.0, // 8,500,000 + 5,000,000 + 5,000,000 active fund values
   activeInvestments: [
     {
       id: 'inv-jul-06',
@@ -63,6 +63,17 @@ const INITIAL_USER: UserProfile = {
       durationMonths: 3,
       startDate: '2026-05-03',
       maturityDate: '2026-08-03',
+      status: 'matured',
+      payoutDate: '2026-08-03',
+    },
+    {
+      id: 'inv-oct-03',
+      name: FUND_NAME,
+      amount: 5000000,
+      interestRate: 5.42,
+      durationMonths: 2,
+      startDate: '2026-08-03',
+      maturityDate: '2026-10-03',
       status: 'active',
     },
     {
@@ -78,8 +89,25 @@ const INITIAL_USER: UserProfile = {
   ],
 };
 
-// Reconciles: 175,000 + 3,650,000 + 1,002,345 + 3,350,000 − 5,000,000 − 120,000 = 3,057,345
+// Reconciles: 175,000 + 3,650,000 + 1,002,345 + 3,350,000 − 5,000,000 − 120,000
+//             + 5,580,000 − 5,000,000 = 3,637,345
 const INITIAL_TRANSACTIONS: Transaction[] = [
+  {
+    id: 'tx-sub-oct-03',
+    name: 'Mutual Fund Subscription',
+    type: 'debit',
+    amount: 5000000,
+    date: '03/08/26 . 10:26 AM',
+    category: 'investment',
+  },
+  {
+    id: 'tx-payout-aug-03',
+    name: 'Investment Payout — High-Yield Fund',
+    type: 'credit',
+    amount: 5580000,
+    date: '03/08/26 . 09:00 AM',
+    category: 'payout',
+  },
   {
     id: 'tx-withdraw-jul-27',
     name: 'Transfer to David Jaiye Sokeyo',
@@ -164,10 +192,10 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
 
 // Bumped storage version so the new data model loads cleanly.
 const STORAGE = {
-  auth: 'stanbic_v17_auth',
-  user: 'stanbic_v17_user',
-  tx: 'stanbic_v17_tx',
-  lastActive: 'stanbic_v17_last_active',
+  auth: 'stanbic_v18_auth',
+  user: 'stanbic_v18_user',
+  tx: 'stanbic_v18_tx',
+  lastActive: 'stanbic_v18_last_active',
 };
 
 // Sign the user out after 15 minutes of inactivity.
