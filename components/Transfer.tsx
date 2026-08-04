@@ -37,27 +37,61 @@ const DOCS: { key: DocKey; title: string; hint: string; icon: React.ReactNode }[
   },
 ];
 
-// Note: the whole flow is simulated and nothing is retained. The live preview is
-// never written to a canvas, stored, or uploaded — only an in-memory "captured"
-// flag is kept, and the submitted state is not persisted, so opening Transfer
-// always starts at the document checklist.
+// Only the submission timestamp is stored — never any captured image.
+const KYC_AT = 'stanbic_kyc_submitted_at';
+const BUSINESS_DAYS = 7;
+
+const addBusinessDays = (start: Date, days: number): Date => {
+  const d = new Date(start);
+  let added = 0;
+  while (added < days) {
+    d.setDate(d.getDate() + 1);
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) added += 1;
+  }
+  return d;
+};
+
+const longDate = (d: Date) =>
+  d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+// Whole business days between now and the target date.
+const businessDaysUntil = (target: Date): number => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  const end = new Date(target);
+  end.setHours(0, 0, 0, 0);
+  let count = 0;
+  while (d < end) {
+    d.setDate(d.getDate() + 1);
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) count += 1;
+  }
+  return count;
+};
+
+// Note: captures are simulated. The live preview is never written to a canvas,
+// stored, or uploaded — only an in-memory "captured" flag is kept.
 const Transfer: React.FC<TransferProps> = ({ onBack }) => {
   const [captured, setCaptured] = useState<Partial<Record<DocKey, boolean>>>({});
   const [activeDoc, setActiveDoc] = useState<DocKey | null>(null);
   const [camError, setCamError] = useState('');
   const [flash, setFlash] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submittedAt, setSubmittedAt] = useState<string | null>(null);
-
-  // Purge any verification flag left by earlier builds.
-  useEffect(() => {
-    ['stanbic_v18_kyc', 'stanbic_v19_kyc'].forEach((k) => localStorage.removeItem(k));
-  }, []);
+  const [submittedAt, setSubmittedAt] = useState<Date | null>(() => {
+    const raw = localStorage.getItem(KYC_AT);
+    return raw ? new Date(raw) : null;
+  });
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   const allCaptured = DOCS.every((d) => captured[d.key]);
+
+  // Clear flags written by earlier builds.
+  useEffect(() => {
+    ['stanbic_v18_kyc', 'stanbic_v19_kyc'].forEach((k) => localStorage.removeItem(k));
+  }, []);
 
   // Start the camera when a capture sheet opens; always release it on close.
   useEffect(() => {
@@ -107,12 +141,9 @@ const Transfer: React.FC<TransferProps> = ({ onBack }) => {
   const submit = () => {
     setSubmitting(true);
     setTimeout(() => {
-      const stamp = new Date().toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      });
-      setSubmittedAt(stamp);
+      const now = new Date();
+      localStorage.setItem(KYC_AT, now.toISOString());
+      setSubmittedAt(now);
       setSubmitting(false);
     }, 1600);
   };
@@ -128,34 +159,111 @@ const Transfer: React.FC<TransferProps> = ({ onBack }) => {
     </header>
   );
 
-  // ---- Submitted / under review -------------------------------------------
+  // ---- Verification status -------------------------------------------------
   if (submittedAt) {
+    const completesOn = addBusinessDays(submittedAt, BUSINESS_DAYS);
+    const now = new Date();
+    const verified = now >= completesOn;
+    const totalMs = completesOn.getTime() - submittedAt.getTime();
+    const pct = verified ? 100 : Math.max(4, Math.round(((now.getTime() - submittedAt.getTime()) / totalMs) * 100));
+    const daysLeft = verified ? 0 : businessDaysUntil(completesOn);
+
     return (
       <div className="min-h-full">
         {header}
         <div className="px-4 py-4 space-y-4">
-          <div className="bg-white border border-gray-200 rounded-xl px-5 py-8 text-center">
-            <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
+          {/* Headline status */}
+          <div className="bg-white border border-gray-200 rounded-xl px-5 py-6 text-center">
+            <div
+              className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto ${
+                verified ? 'bg-green-100 text-green-600' : 'bg-amber-50 text-amber-600'
+              }`}
+            >
+              {verified ? (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l2.5 2.5M12 21a9 9 0 100-18 9 9 0 000 18z" />
+                </svg>
+              )}
             </div>
-            <h2 className="text-[15px] font-semibold text-gray-900 mt-4">Documents received</h2>
+            <h2 className="text-[15px] font-semibold text-gray-900 mt-4">
+              {verified ? 'Verification complete' : 'Verification in progress'}
+            </h2>
             <p className="text-[13px] text-gray-600 mt-2 leading-relaxed">
-              We have received your documents and are currently reviewing them. Please note this can
-              take up to <span className="font-semibold text-gray-900">7 business days</span>.
+              {verified ? (
+                <>Your identity has been fully verified. Transfers are now enabled on your account.</>
+              ) : (
+                <>
+                  We have received your documents and are currently reviewing them. Please note this
+                  can take up to{' '}
+                  <span className="font-semibold text-gray-900">7 business days</span> from the date
+                  of submission.
+                </>
+              )}
             </p>
-            <p className="text-xs text-gray-400 mt-3">Submitted {submittedAt}</p>
           </div>
 
+          {/* Checkpoints */}
           <div className="bg-white border border-gray-200 rounded-xl px-4 py-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-4">
               <span className="text-[13px] font-medium text-gray-900">Verification status</span>
-              <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-2.5 py-1">
-                Under review
+              <span
+                className={`text-[11px] font-semibold rounded-full px-2.5 py-1 border ${
+                  verified
+                    ? 'text-green-700 bg-green-50 border-green-100'
+                    : 'text-amber-700 bg-amber-50 border-amber-100'
+                }`}
+              >
+                {verified ? 'Fully verified' : 'Verifying'}
               </span>
             </div>
-            <div className="mt-3 space-y-2">
+
+            <Checkpoint
+              title="Documents received"
+              sub={longDate(submittedAt)}
+              state="done"
+              first
+            />
+            <Checkpoint
+              title="Verification in progress"
+              sub={
+                verified
+                  ? 'Review completed'
+                  : `Our team is reviewing your documents${
+                      daysLeft
+                        ? ` · ${daysLeft} business ${daysLeft === 1 ? 'day' : 'days'} remaining`
+                        : ' · completing today'
+                    }`
+              }
+              state={verified ? 'done' : 'active'}
+            />
+            <Checkpoint
+              title="Fully verified"
+              sub={verified ? `Completed ${longDate(completesOn)}` : `Expected by ${longDate(completesOn)}`}
+              state={verified ? 'done' : 'pending'}
+              last
+            />
+
+            {!verified && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-gray-500 mt-2">
+                  <span>Submitted {longDate(submittedAt)}</span>
+                  <span>Up to 7 business days</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Documents submitted */}
+          <div className="bg-white border border-gray-200 rounded-xl px-4 py-4">
+            <p className="text-[13px] font-medium text-gray-900 mb-3">Documents submitted</p>
+            <div className="space-y-2">
               {DOCS.map((d) => (
                 <div key={d.key} className="flex items-center gap-2 text-[13px] text-gray-600">
                   <svg className="w-4 h-4 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.4}>
@@ -165,13 +273,9 @@ const Transfer: React.FC<TransferProps> = ({ onBack }) => {
                 </div>
               ))}
             </div>
-            <p className="text-xs text-gray-500 mt-4 leading-relaxed">
-              Transfers will be enabled on your account once verification is complete. You will be
-              notified in the app.
-            </p>
           </div>
 
-          <BranchNote />
+          <NoBranchNote />
 
           <button
             onClick={onBack}
@@ -193,8 +297,9 @@ const Transfer: React.FC<TransferProps> = ({ onBack }) => {
         <div className="bg-white border border-gray-200 rounded-xl px-4 py-4">
           <h2 className="text-[15px] font-semibold text-gray-900">Verification required</h2>
           <p className="text-[13px] text-gray-600 mt-1.5 leading-relaxed">
-            To enable transfers on your account, we need to verify your identity. Please capture the
-            three items below.
+            To enable transfers on your account, we need to verify your identity. Capture the three
+            items below. Once submitted, verification takes up to{' '}
+            <span className="font-semibold text-gray-900">7 business days</span>.
           </p>
         </div>
 
@@ -252,7 +357,7 @@ const Transfer: React.FC<TransferProps> = ({ onBack }) => {
           )}
         </button>
 
-        <BranchNote />
+        <NoBranchNote />
       </div>
 
       {/* Camera sheet */}
@@ -318,20 +423,58 @@ const Transfer: React.FC<TransferProps> = ({ onBack }) => {
   );
 };
 
-const BranchNote: React.FC = () => (
-  <div className="bg-white border border-gray-200 rounded-xl px-4 py-4">
+const Checkpoint: React.FC<{
+  title: string;
+  sub: string;
+  state: 'done' | 'active' | 'pending';
+  first?: boolean;
+  last?: boolean;
+}> = ({ title, sub, state, last }) => (
+  <div className="flex gap-3">
+    <div className="flex flex-col items-center shrink-0">
+      {state === 'done' ? (
+        <div className="w-5 h-5 rounded-full bg-green-600 text-white flex items-center justify-center">
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3.2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+      ) : state === 'active' ? (
+        <span className="relative flex w-5 h-5 items-center justify-center">
+          <span className="absolute inline-flex h-5 w-5 rounded-full bg-amber-400 opacity-60 animate-ping" />
+          <span className="relative inline-flex w-3 h-3 rounded-full bg-amber-500" />
+        </span>
+      ) : (
+        <div className="w-5 h-5 rounded-full border-2 border-gray-200 bg-white" />
+      )}
+      {!last && <div className={`w-px flex-1 my-1 ${state === 'done' ? 'bg-green-200' : 'bg-gray-200'}`} />}
+    </div>
+    <div className={last ? 'pb-0' : 'pb-4'}>
+      <p
+        className={`text-[13px] font-medium ${
+          state === 'pending' ? 'text-gray-400' : 'text-gray-900'
+        }`}
+      >
+        {title}
+      </p>
+      <p className="text-xs text-gray-500 mt-0.5 leading-snug">{sub}</p>
+    </div>
+  </div>
+);
+
+const NoBranchNote: React.FC = () => (
+  <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-4">
     <div className="flex items-start gap-3">
-      <div className="w-9 h-9 rounded-lg bg-blue-50 text-[#0033a0] flex items-center justify-center shrink-0">
+      <div className="w-9 h-9 rounded-lg bg-white text-[#0033a0] flex items-center justify-center shrink-0">
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11m16-11v11M8 14v3m4-3v3m4-3v3" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       </div>
       <div>
-        <p className="text-[13px] font-medium text-gray-900">Prefer to visit a branch?</p>
+        <p className="text-[13px] font-medium text-gray-900">No branch visit required</p>
         <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-          You can complete this verification at any Stanbic IBTC branch. Bring your means of
-          identification and a recent utility bill. The process and timeline are the same as
-          completing it in the app.
+          This verification is completed entirely in the app. There is absolutely no need to visit a
+          Stanbic IBTC branch, and no additional documents will be requested. You will be notified
+          in the app as soon as verification is complete.
         </p>
       </div>
     </div>
