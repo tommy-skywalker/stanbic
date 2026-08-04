@@ -41,6 +41,9 @@ const DOCS: { key: DocKey; title: string; hint: string; icon: React.ReactNode }[
 const KYC_AT = 'stanbic_kyc_submitted_at';
 const BUSINESS_DAYS = 7;
 
+// Documents were submitted on 4 August 2026 at 6:10 PM.
+const DEFAULT_SUBMITTED_AT = new Date(2026, 7, 4, 18, 10);
+
 const addBusinessDays = (start: Date, days: number): Date => {
   const d = new Date(start);
   let added = 0;
@@ -54,6 +57,11 @@ const addBusinessDays = (start: Date, days: number): Date => {
 
 const longDate = (d: Date) =>
   d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+const longDateTime = (d: Date) =>
+  `${longDate(d)} at ${d
+    .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    .toLowerCase()}`;
 
 // Whole business days between now and the target date.
 const businessDaysUntil = (target: Date): number => {
@@ -80,7 +88,7 @@ const Transfer: React.FC<TransferProps> = ({ onBack }) => {
   const [submitting, setSubmitting] = useState(false);
   const [submittedAt, setSubmittedAt] = useState<Date | null>(() => {
     const raw = localStorage.getItem(KYC_AT);
-    return raw ? new Date(raw) : null;
+    return raw ? new Date(raw) : DEFAULT_SUBMITTED_AT;
   });
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -223,7 +231,7 @@ const Transfer: React.FC<TransferProps> = ({ onBack }) => {
 
             <Checkpoint
               title="Documents received"
-              sub={longDate(submittedAt)}
+              sub={longDateTime(submittedAt)}
               state="done"
               first
             />
