@@ -37,19 +37,22 @@ const DOCS: { key: DocKey; title: string; hint: string; icon: React.ReactNode }[
   },
 ];
 
-const KYC_KEY = 'stanbic_v18_kyc';
-
-// Note: captures are simulated. The live preview is never written to a canvas,
-// stored, or uploaded — only a "captured" flag is kept, in memory.
+// Note: the whole flow is simulated and nothing is retained. The live preview is
+// never written to a canvas, stored, or uploaded — only an in-memory "captured"
+// flag is kept, and the submitted state is not persisted, so opening Transfer
+// always starts at the document checklist.
 const Transfer: React.FC<TransferProps> = ({ onBack }) => {
   const [captured, setCaptured] = useState<Partial<Record<DocKey, boolean>>>({});
   const [activeDoc, setActiveDoc] = useState<DocKey | null>(null);
   const [camError, setCamError] = useState('');
   const [flash, setFlash] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submittedAt, setSubmittedAt] = useState<string | null>(() =>
-    localStorage.getItem(KYC_KEY),
-  );
+  const [submittedAt, setSubmittedAt] = useState<string | null>(null);
+
+  // Purge any verification flag left by earlier builds.
+  useEffect(() => {
+    ['stanbic_v18_kyc', 'stanbic_v19_kyc'].forEach((k) => localStorage.removeItem(k));
+  }, []);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -109,7 +112,6 @@ const Transfer: React.FC<TransferProps> = ({ onBack }) => {
         month: 'long',
         year: 'numeric',
       });
-      localStorage.setItem(KYC_KEY, stamp);
       setSubmittedAt(stamp);
       setSubmitting(false);
     }, 1600);

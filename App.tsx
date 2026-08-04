@@ -20,7 +20,7 @@ const INITIAL_USER: UserProfile = {
   name: 'David Jaiye Sokeyo',
   accountNumber: '0002874480',
   accountType: 'Savings Account',
-  balance: 3637345.0,
+  balance: 3437345.0,
   investmentBalance: 18500000.0, // 8,500,000 + 5,000,000 + 5,000,000 active fund values
   activeInvestments: [
     {
@@ -90,7 +90,7 @@ const INITIAL_USER: UserProfile = {
 };
 
 // Reconciles: 175,000 + 3,650,000 + 1,002,345 + 3,350,000 − 5,000,000 − 120,000
-//             + 5,580,000 − 5,000,000 = 3,637,345
+//             + 5,580,000 − 5,000,000 − 200,000 = 3,437,345
 const INITIAL_TRANSACTIONS: Transaction[] = [
   {
     id: 'tx-sub-oct-03',
@@ -107,6 +107,14 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     amount: 5580000,
     date: '03/08/26 . 09:00 AM',
     category: 'payout',
+  },
+  {
+    id: 'tx-withdraw-aug-02',
+    name: 'Transfer to David Jaiye Sokeyo',
+    type: 'debit',
+    amount: 200000,
+    date: '02/08/26 . 03:41 PM',
+    category: 'transfer',
   },
   {
     id: 'tx-withdraw-jul-27',
@@ -192,10 +200,10 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
 
 // Bumped storage version so the new data model loads cleanly.
 const STORAGE = {
-  auth: 'stanbic_v18_auth',
-  user: 'stanbic_v18_user',
-  tx: 'stanbic_v18_tx',
-  lastActive: 'stanbic_v18_last_active',
+  auth: 'stanbic_v19_auth',
+  user: 'stanbic_v19_user',
+  tx: 'stanbic_v19_tx',
+  lastActive: 'stanbic_v19_last_active',
 };
 
 // Sign the user out after 15 minutes of inactivity.
