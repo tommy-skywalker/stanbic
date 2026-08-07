@@ -20,8 +20,8 @@ const INITIAL_USER: UserProfile = {
   name: 'David Jaiye Sokeyo',
   accountNumber: '0002874480',
   accountType: 'Savings Account',
-  balance: 3337345.0,
-  investmentBalance: 18500000.0, // 8,500,000 + 5,000,000 + 5,000,000 active fund values
+  balance: 687345.0,
+  investmentBalance: 21000000.0, // 5,000,000 + 5,000,000 + 11,000,000 active fund values
   activeInvestments: [
     {
       id: 'inv-jul-06',
@@ -83,15 +83,51 @@ const INITIAL_USER: UserProfile = {
       interestRate: 5.42,
       durationMonths: 3,
       startDate: '2026-05-07',
-      maturityDate: '2026-08-07',
+      maturityDate: '2026-08-06',
+      status: 'matured',
+      payoutDate: '2026-08-06',
+    },
+    {
+      id: 'inv-oct-06',
+      name: FUND_NAME,
+      amount: 11000000,
+      interestRate: 5.42,
+      durationMonths: 2,
+      startDate: '2026-08-06',
+      maturityDate: '2026-10-06',
       status: 'active',
     },
   ],
 };
 
 // Reconciles: 175,000 + 3,650,000 + 1,002,345 + 3,350,000 − 5,000,000 − 120,000
-//             + 5,580,000 − 5,000,000 − 200,000 − 100,000 = 3,337,345
+//             + 5,580,000 − 5,000,000 − 200,000 − 100,000 − 150,000
+//             + 8,500,000 − 11,000,000 = 687,345
 const INITIAL_TRANSACTIONS: Transaction[] = [
+  {
+    id: 'tx-sub-oct-06',
+    name: 'Mutual Fund Subscription',
+    type: 'debit',
+    amount: 11000000,
+    date: '06/08/26 . 10:15 AM',
+    category: 'investment',
+  },
+  {
+    id: 'tx-payout-aug-06',
+    name: 'Investment Payout — High-Yield Fund',
+    type: 'credit',
+    amount: 8500000,
+    date: '06/08/26 . 09:00 AM',
+    category: 'payout',
+  },
+  {
+    id: 'tx-atm-aug-05',
+    name: 'ATM Withdrawal',
+    type: 'debit',
+    amount: 150000,
+    date: '05/08/26 . 02:34 PM',
+    category: 'system',
+  },
   {
     id: 'tx-atm-aug-04',
     name: 'ATM Withdrawal',
@@ -208,10 +244,10 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
 
 // Bumped storage version so the new data model loads cleanly.
 const STORAGE = {
-  auth: 'stanbic_v20_auth',
-  user: 'stanbic_v20_user',
-  tx: 'stanbic_v20_tx',
-  lastActive: 'stanbic_v20_last_active',
+  auth: 'stanbic_v21_auth',
+  user: 'stanbic_v21_user',
+  tx: 'stanbic_v21_tx',
+  lastActive: 'stanbic_v21_last_active',
 };
 
 // Sign the user out after 15 minutes of inactivity.
