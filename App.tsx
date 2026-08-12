@@ -121,19 +121,19 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
     category: 'payout',
   },
   {
-    id: 'tx-atm-aug-05',
-    name: 'ATM Withdrawal',
-    type: 'debit',
-    amount: 150000,
-    date: '05/08/26 . 02:34 PM',
-    category: 'system',
-  },
-  {
     id: 'tx-atm-aug-04',
     name: 'ATM Withdrawal',
     type: 'debit',
     amount: 100000,
     date: '04/08/26 . 11:20 AM',
+    category: 'system',
+  },
+  {
+    id: 'tx-atm-aug-03',
+    name: 'ATM Withdrawal',
+    type: 'debit',
+    amount: 150000,
+    date: '03/08/26 . 04:15 PM',
     category: 'system',
   },
   {
@@ -244,10 +244,10 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
 
 // Bumped storage version so the new data model loads cleanly.
 const STORAGE = {
-  auth: 'stanbic_v21_auth',
-  user: 'stanbic_v21_user',
-  tx: 'stanbic_v21_tx',
-  lastActive: 'stanbic_v21_last_active',
+  auth: 'stanbic_v22_auth',
+  user: 'stanbic_v22_user',
+  tx: 'stanbic_v22_tx',
+  lastActive: 'stanbic_v22_last_active',
 };
 
 // Sign the user out after 15 minutes of inactivity.
